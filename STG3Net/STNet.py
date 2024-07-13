@@ -1,11 +1,6 @@
-import os
-import torch
 import torch.nn.modules.loss
 from tqdm import tqdm
 from torch.backends import cudnn
-from sklearn.metrics import adjusted_rand_score as ari_score
-import pandas as pd
-import scanpy as sc
 
 from .Module import *
 from .Utils import *
@@ -161,15 +156,15 @@ class G3net:
         latent_emb = self.autoencoder.embeding(self.X, self.adj_norm)
 
         self.adata.obsm['latent'] = latent_emb.data.cpu().numpy()
-        key_pred = 'G3STNet_Domain'
+        key_pred = 'Tmp_domain'
         self.adata = self.clustering(self.adata, num_cluster=self.num_cluster, used_obsm='latent', key_added_pred=key_pred, method=method, random_seed=random_seed)
 
-        mnn_dict = create_dictionary_gnn(self.adata, use_rep='latent', use_label=key_pred, batch_name='batch_name', k=self.train_config['knn_neigh'], verbose=verbose)
+        gnn_dict = create_dictionary_gnn(self.adata, use_rep='latent', use_label=key_pred, batch_name='batch_name', k=self.train_config['knn_neigh'], verbose=verbose)
         anchor_ind = []
         positive_ind = []
         negative_ind = []
-        for batch_pair in mnn_dict.keys():
-            batchname_list = self.adata.obs['batch_name'][mnn_dict[batch_pair].keys()]
+        for batch_pair in gnn_dict.keys():
+            batchname_list = self.adata.obs['batch_name'][gnn_dict[batch_pair].keys()]
 
             cellname_by_batch_dict = dict()
             for batch_id in range(len(self.section_ids)):
@@ -179,9 +174,9 @@ class G3net:
             anchor_list = []
             positive_list = []
             negative_list = []
-            for anchor in mnn_dict[batch_pair].keys():
+            for anchor in gnn_dict[batch_pair].keys():
                 anchor_list.append(anchor)
-                positive_spot = mnn_dict[batch_pair][anchor][0]
+                positive_spot = gnn_dict[batch_pair][anchor][0]
                 positive_list.append(positive_spot)
                 section_size = len(cellname_by_batch_dict[batchname_list[anchor]])
                 negative_list.append(
